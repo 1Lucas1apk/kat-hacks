@@ -24,7 +24,9 @@
         }
     }
     function saveSettings(s) {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+        try {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+        } catch {}
     }
     const currentSettings = loadSettings();
 
@@ -48,14 +50,53 @@
         return document.getElementById("Gato") || document.getElementById("gato") || document.querySelector("[id*='ato']");
     }
 
+    function canAct() {
+        if (typeof framer === "undefined" || !framer) return false;
+        if (framer.character_main_scene && framer.character_main_scene.isAnimating) return false;
+        if (framer.sceneManager && (framer.sceneManager.currentScene || framer.sceneManager.activeAlert)) return false;
+        if (framer.controlsDisabled || framer.isOnDialog || framer.codeBox) return false;
+        const dialogBox = document.querySelector(".dialog-box");
+        if (dialogBox && !dialogBox.classList.contains("closed") && dialogBox.style.display !== "none") return false;
+        const challenge = document.querySelector(".challenge-panel, #challenge-panel");
+        if (challenge && challenge.style.display !== "none" && !challenge.classList.contains("closed")) return false;
+        return true;
+    }
+
     if (!document.getElementById("kat-native-theme")) {
         const style = document.createElement("style");
         style.id = "kat-native-theme";
         style.textContent = `
             @keyframes katSpinAnim {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
+                0% { transform: translateY(var(--kat-jump-y, 0px)) rotate(0deg); }
+                100% { transform: translateY(var(--kat-jump-y, 0px)) rotate(360deg); }
             }
+            body.kat-spin-active #Gato,
+            body.kat-spin-active .character:not(.npc) {
+                animation: katSpinAnim 0.22s linear infinite !important;
+                transform-origin: center center !important;
+            }
+            body:not(.kat-spin-active) #Gato,
+            body:not(.kat-spin-active) .character:not(.npc) {
+                transform: translateY(var(--kat-jump-y, 0px));
+            }
+
+            body.kat-godzilla-active #Gato,
+            body.kat-godzilla-active .character:not(.npc) {
+                width: 320px !important;
+                height: 320px !important;
+                filter: drop-shadow(0 0 22px #ff3333) !important;
+            }
+
+            @keyframes katNpcDance {
+                0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+                25% { transform: translateY(-20px) rotate(-12deg) scale(1.1); filter: hue-rotate(90deg); }
+                50% { transform: translateY(0) rotate(0deg) scale(0.95); filter: hue-rotate(180deg); }
+                75% { transform: translateY(-20px) rotate(12deg) scale(1.1); filter: hue-rotate(270deg); }
+            }
+            .kat-npc-dancing {
+                animation: katNpcDance 0.35s infinite !important;
+            }
+
             @keyframes katRaveAnim {
                 0% { filter: hue-rotate(0deg) saturate(2); }
                 50% { filter: hue-rotate(180deg) saturate(4) brightness(1.2); }
@@ -65,10 +106,6 @@
                 animation: katRaveAnim 0.7s linear infinite !important;
             }
 
-            @keyframes katCrtScan {
-                0% { background-position: 0 0; }
-                100% { background-position: 0 100%; }
-            }
             .kat-crt-active::after {
                 content: " ";
                 display: block;
@@ -82,7 +119,7 @@
 
             @keyframes katCrownFloat {
                 0%, 100% { transform: translate(-50%, -100%) translateY(-10px); }
-                50% { transform: translate(-50%, -100%) translateY(-16px); }
+                50% { transform: translate(-50%, -100%) translateY(-18px); }
             }
             .kat-crown-tag {
                 position: absolute;
@@ -90,12 +127,12 @@
                 left: 50%;
                 transform: translate(-50%, -100%) translateY(-10px);
                 animation: katCrownFloat 1.6s ease-in-out infinite;
-                font-size: 10px;
+                font-size: 11px;
                 font-weight: bold;
                 color: #ffd700;
                 text-shadow: 0 0 6px #ff8800, 2px 2px 0 #000;
-                background: rgba(16, 10, 22, 0.85);
-                border: 1px solid #ffd700;
+                background: rgba(16, 10, 22, 0.88);
+                border: 2px solid #ffd700;
                 padding: 2px 6px;
                 white-space: nowrap;
                 pointer-events: none;
@@ -126,8 +163,8 @@
             }
             .kat-vortex-hole {
                 position: fixed;
-                width: 120px;
-                height: 120px;
+                width: 130px;
+                height: 130px;
                 border-radius: 50%;
                 border: 4px dashed #ff00ff;
                 box-shadow: 0 0 35px #ff00ff, inset 0 0 30px #9900ff;
@@ -233,6 +270,10 @@
                 border-bottom: 2px solid #503363;
                 padding-bottom: 6px;
                 margin-bottom: 2px;
+                cursor: grab;
+            }
+            .kat-header-native:active {
+                cursor: grabbing;
             }
 
             .kat-kicker-native {
@@ -319,8 +360,8 @@
                 justify-content: space-between;
                 background: #1a0f25;
                 border: 2px solid #503363;
-                padding: 3px 6px;
-                font-size: 10px;
+                padding: 4px 6px;
+                font-size: 11px;
                 color: #e0b8ff;
                 font-weight: bold;
             }
@@ -330,7 +371,7 @@
                 color: #f7edff;
                 cursor: pointer;
                 padding: 2px 6px;
-                font-family: inherit;
+                font-family: "Courier New", Courier, monospace;
                 font-size: 10px;
                 font-weight: bold;
             }
@@ -341,29 +382,44 @@
             }
 
             .kat-select-native {
+                width: 100%;
                 background: #241432;
                 border: 2px solid #503363;
-                color: #e0b8ff;
-                padding: 5px;
+                color: #f7edff;
+                padding: 5px 6px;
                 font-family: "Courier New", Courier, monospace;
-                font-size: 10px;
+                font-size: 11px;
                 font-weight: bold;
+                outline: none;
                 cursor: pointer;
-                box-shadow: 0 2px 0 #0b0711;
-                width: 100%;
+            }
+            .kat-select-native:focus {
+                border-color: #e0b8ff;
             }
 
             .kat-footer-text {
                 font-size: 9px;
-                color: #bfa4cf;
+                color: #8f749f;
                 text-align: center;
-                margin: 4px 0 0;
-                border-top: 1px solid #3c254d;
-                padding-top: 4px;
+                margin-top: 4px;
+                line-height: 1.3;
             }
         `;
         document.head.appendChild(style);
     }
+
+    if (!document.getElementById("kat-rick-preload")) {
+        const pl = document.createElement("link");
+        pl.id = "kat-rick-preload";
+        pl.rel = "preconnect";
+        pl.href = "https://www.youtube-nocookie.com";
+        document.head.appendChild(pl);
+    }
+
+    if (currentSettings.godzilla) document.body.classList.add("kat-godzilla-active");
+    if (currentSettings.spin) document.body.classList.add("kat-spin-active");
+    if (currentSettings.rave) document.body.classList.add("kat-rave-active");
+    if (currentSettings.crt) document.body.classList.add("kat-crt-active");
 
     function applySpeed(multiplier) {
         currentSettings.speed = multiplier;
@@ -374,7 +430,11 @@
             if (!cat._origWalk) {
                 cat._origWalk = cat.walk;
                 cat.walk = function (top, left, direction, spriteIndex) {
-                    if (currentSettings.speed > 1) {
+                    if (
+                        currentSettings.speed > 1 &&
+                        canAct() &&
+                        !this.isAnimating
+                    ) {
                         const extra = (currentSettings.speed - 1) * 5;
                         if (direction === "top") top -= extra;
                         else if (direction === "bottom") top += extra;
@@ -410,7 +470,6 @@
             if (active) {
                 framer.hitsGlitches = () => false;
                 framer.hitsCreatedPlaceObject = () => false;
-                framer.controlsDisabled = false;
                 if (framer.sceneManager) framer.sceneManager.canMove = () => true;
             } else {
                 if (window._origHitsGlitches) framer.hitsGlitches = window._origHitsGlitches;
@@ -425,28 +484,13 @@
     function applyGodzilla(active) {
         currentSettings.godzilla = active;
         saveSettings(currentSettings);
-        const cat = getCat();
-        if (!cat) return;
-
-        if (active) {
-            cat.style.width = "300px";
-            cat.style.height = "300px";
-            cat.style.filter = "drop-shadow(0 0 16px #ff4444)";
-        } else {
-            cat.style.width = "130px";
-            cat.style.height = "130px";
-            cat.style.filter = "";
-        }
+        document.body.classList.toggle("kat-godzilla-active", active);
     }
 
     function applySpin(active) {
         currentSettings.spin = active;
         saveSettings(currentSettings);
-        const cat = getCat();
-        if (!cat) return;
-
-        cat.style.transformOrigin = "center center";
-        cat.style.animation = active ? "katSpinAnim 0.25s linear infinite" : "";
+        document.body.classList.toggle("kat-spin-active", active);
     }
 
     function applyRave(active) {
@@ -530,6 +574,15 @@
         }
     }
 
+    let danceActive = false;
+    function toggleDance() {
+        danceActive = !danceActive;
+        document.querySelectorAll(".npc, [class*='npc']").forEach((el) => {
+            el.classList.toggle("kat-npc-dancing", danceActive);
+        });
+        if (danceActive && window.katSound) window.katSound.play("success");
+    }
+
     let clones = [];
     function toggleClones() {
         const cat = getCat();
@@ -569,14 +622,13 @@
 
     function doJump() {
         const cat = getCat();
-        if (!cat || cat._isJumping) return;
+        if (!cat || cat._isJumping || !canAct()) return;
         cat._isJumping = true;
 
         if (window.katSound) window.katSound.play("teleport");
 
-        let startY = 0;
         let t = 0;
-        const jumpHeight = 70;
+        const jumpHeight = 75;
         const duration = 28;
 
         function jumpFrame() {
@@ -584,10 +636,10 @@
             const progress = t / duration;
             if (progress <= 1) {
                 const offset = Math.sin(progress * Math.PI) * jumpHeight;
-                cat.style.transform = `translateY(-${offset}px)`;
+                cat.style.setProperty("--kat-jump-y", `-${offset}px`);
                 requestAnimationFrame(jumpFrame);
             } else {
-                cat.style.transform = "";
+                cat.style.removeProperty("--kat-jump-y");
                 cat._isJumping = false;
             }
         }
@@ -595,6 +647,7 @@
     }
 
     function shootLaser() {
+        if (!canAct()) return;
         const cat = getCat();
         if (!cat) return;
 
@@ -745,12 +798,12 @@
     }
 
     window.addEventListener("contextmenu", (e) => {
-        if (e.target.closest("#kat-native-hack-root")) return;
-        e.preventDefault();
+        if (e.target.closest("#kat-native-hack-root, input, textarea, select")) return;
+        if (canAct()) e.preventDefault();
     });
 
     window.addEventListener("mousedown", (e) => {
-        if (e.button === 2 && !e.target.closest("#kat-native-hack-root")) {
+        if (e.button === 2 && canAct() && !e.target.closest("#kat-native-hack-root, input, textarea, select")) {
             startVortex(e);
         }
     });
@@ -772,15 +825,15 @@
         `;
 
         modal.innerHTML = `
-            <div style="text-align: center; margin-bottom: 15px;">
+            <div style="text-align: center; margin-bottom: 14px;">
                 <h1 style="color: #ff3366; font-family: 'Courier New', monospace; font-size: 24px; margin: 0; text-shadow: 0 0 10px #ff0055;">
                     🕺 VOCÊ FOI RICKROLLADO! 🕺
                 </h1>
-                <p style="color: #a7f3b4; font-family: 'Courier New', monospace; font-size: 14px; margin: 5px 0 0;">
+                <p style="color: #a7f3b4; font-family: 'Courier New', monospace; font-size: 14px; margin: 6px 0 0;">
                     Never Gonna Give Portugol Up...
                 </p>
             </div>
-            <div style="width: min(90vw, 720px); height: min(60vh, 405px); border: 4px solid #e0b8ff; box-shadow: 0 0 30px #e0b8ff;">
+            <div style="width: min(90vw, 760px); height: min(65vh, 430px); border: 4px solid #e0b8ff; box-shadow: 0 0 35px #e0b8ff, inset 0 0 20px #000; background: #000;">
                 <iframe width="100%" height="100%" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&controls=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
             </div>
             <button id="kat-close-rick" style="margin-top: 18px; background: #241432; border: 2px solid #e0b8ff; color: #f7edff; padding: 10px 24px; font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold; cursor: pointer;">
@@ -818,9 +871,9 @@
 
         if (window.finalTerminal && typeof window.finalTerminal.run === "function") {
             window.finalTerminal.run(lines).then(() => {
-                setTimeout(triggerRickroll, 2000);
+                setTimeout(triggerRickroll, 2200);
             }).catch((err) => {
-                console.error("Falha ao rodar terminal final", err);
+                console.error(err);
             });
         } else {
             alert("Vá até a sala final (final-commit.html) para disparar o terminal!");
@@ -848,11 +901,15 @@
             if (e.code === "KeyM") {
                 playSound("gato");
             } else if (e.code === "Space") {
-                e.preventDefault();
-                doJump();
+                if (canAct()) {
+                    e.preventDefault();
+                    doJump();
+                }
             } else if (e.code === "KeyF") {
-                e.preventDefault();
-                shootLaser();
+                if (canAct()) {
+                    e.preventDefault();
+                    shootLaser();
+                }
             }
         });
     }
@@ -985,6 +1042,35 @@
     const root = document.createElement("div");
     root.id = "kat-native-hack-root";
 
+    function makeDraggable(header, container) {
+        let isDragging = false;
+        let startX, startY, origX, origY;
+
+        header.addEventListener("mousedown", (e) => {
+            if (e.target.closest("button")) return;
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = container.getBoundingClientRect();
+            origX = rect.left;
+            origY = rect.top;
+            e.preventDefault();
+        });
+
+        window.addEventListener("mousemove", (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            container.style.right = "auto";
+            container.style.left = Math.max(10, Math.min(window.innerWidth - container.offsetWidth - 10, origX + dx)) + "px";
+            container.style.top = Math.max(10, Math.min(window.innerHeight - container.offsetHeight - 10, origY + dy)) + "px";
+        });
+
+        window.addEventListener("mouseup", () => {
+            isDragging = false;
+        });
+    }
+
     function renderUI() {
         root.replaceChildren();
 
@@ -1004,7 +1090,7 @@
         const panel = document.createElement("div");
         panel.className = "kat-panel-native";
         panel.innerHTML = `
-            <div class="kat-header-native">
+            <div class="kat-header-native" id="kat-drag-header">
                 <div>
                     <div class="kat-kicker-native">TERMINAL // ROOT_ACCESS</div>
                     <h2 class="kat-title-native">KAT-OS // CHEAT_ENGINE</h2>
@@ -1029,7 +1115,7 @@
                 <span>🗣️ Conversar com NPC</span> <span>[E]</span>
             </button>
 
-            <div class="kat-section-label">🎮 ARMAS & FÍSICA (NOVOS!)</div>
+            <div class="kat-section-label">🎮 ARMAS & FÍSICA (ATIVOS)</div>
             <div class="kat-btn-grid">
                 <button id="kn-laser" class="kat-btn-native kat-btn-action">
                     <span>🔫 Atirar Laser</span> <span>[F]</span>
@@ -1087,28 +1173,32 @@
                 <button id="kn-conga" class="kat-btn-native ${congaActive ? 'is-active' : ''}">
                     <span>🚂 Centopeia NPCs</span>
                 </button>
+                <button id="kn-dance" class="kat-btn-native ${danceActive ? 'is-active' : ''}">
+                    <span>💃 Festa dos NPCs</span>
+                </button>
+            </div>
+
+            <div class="kat-btn-grid">
                 <button id="kn-clones" class="kat-btn-native ${clones.length > 0 ? 'is-active' : ''}">
                     <span>👥 Clones (8x)</span>
                 </button>
-            </div>
-
-            <div class="kat-btn-grid">
                 <button id="kn-rave" class="kat-btn-native ${currentSettings.rave ? 'is-active' : ''}">
                     <span>🌈 Modo Rave</span>
                 </button>
-                <button id="kn-crt" class="kat-btn-native ${currentSettings.crt ? 'is-active' : ''}">
-                    <span>📺 Visual CRT</span>
-                </button>
             </div>
 
             <div class="kat-btn-grid">
+                <button id="kn-crt" class="kat-btn-native ${currentSettings.crt ? 'is-active' : ''}">
+                    <span>📺 Visual CRT</span>
+                </button>
                 <button id="kn-troll" class="kat-btn-native">
                     <span>💬 Diálogo Troll</span>
                 </button>
-                <button id="kn-meow" class="kat-btn-native">
-                    <span>🐱 Miar [Tecla M]</span>
-                </button>
             </div>
+
+            <button id="kn-meow" class="kat-btn-native">
+                <span>🐱 Miar Som 8-Bit [Tecla M]</span> <span>▶</span>
+            </button>
 
             <div class="kat-section-label">👑 MODO DEUS & MAPA</div>
             <button id="kn-timer" class="kat-btn-native ${timerRunning ? 'is-active' : ''}">
@@ -1145,6 +1235,7 @@
         `;
 
         root.appendChild(panel);
+        makeDraggable(panel.querySelector("#kat-drag-header"), root);
 
         panel.querySelector("#kn-min").onclick = () => {
             currentSettings.minimized = true;
@@ -1203,6 +1294,11 @@
             renderUI();
         };
 
+        panel.querySelector("#kn-dance").onclick = () => {
+            toggleDance();
+            renderUI();
+        };
+
         panel.querySelector("#kn-clones").onclick = () => {
             toggleClones();
             renderUI();
@@ -1227,17 +1323,14 @@
 
         panel.querySelector("#kn-save").onclick = () => {
             const state = JSON.parse(localStorage.getItem("assets") || "{}");
-            state.started = true;
             state["have-admin-file"] = true;
-            state["admin-key-available"] = true;
             state["admin-access-lost"] = false;
-            state["have-ben"] = true;
             state["have-repair-tool"] = true;
             state["ben-taked"] = true;
             state.encryptedFiles = [1, 2, 3, 4];
-            state.completedChallenges = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            state.completedChallenges = [1, 2, 3, 4, 5, 6, 7, 8, 9];
             localStorage.setItem("assets", JSON.stringify(state));
-            alert("Save 100% aplicado!");
+            alert("Save 100% aplicado! Todos os 4 arquivos desbloqueados.");
             location.reload();
         };
 
@@ -1255,18 +1348,13 @@
         };
 
         panel.querySelector("#kn-clear").onclick = () => {
-            if (typeof framer !== "undefined" && framer.placeApi) {
-                framer.placeApi.deletar.tudo();
-            }
+            document.querySelectorAll(".place-object").forEach(el => el.remove());
+            if (typeof framer !== "undefined") framer.placeObject = [];
         };
 
         panel.querySelector("#kn-warp").onchange = (e) => {
-            if (e.target.value) {
-                const state = JSON.parse(localStorage.getItem("assets") || "{}");
-                state.started = true;
-                localStorage.setItem("assets", JSON.stringify(state));
-                window.location.href = e.target.value;
-            }
+            const val = e.target.value;
+            if (val) window.location.href = val;
         };
     }
 
@@ -1283,12 +1371,12 @@
         if (currentSettings.crt) applyCrt(true);
         if (currentSettings.crown) applyCrown(true);
         if (currentSettings.boss) toggleBoss();
-    }, 150);
+    }, 300);
 
     if (!window._katNativeTeleportHooked) {
         window._katNativeTeleportHooked = true;
         window.addEventListener("click", (e) => {
-            if (!e.shiftKey) return;
+            if (!e.shiftKey || !canAct()) return;
             const cat = getCat();
             if (cat && typeof framer !== "undefined") {
                 const top = e.pageY - ((cat.offsetHeight || 130) / 2);
@@ -1299,6 +1387,4 @@
             }
         });
     }
-
-    console.log("%c[KAT-OS ROOT ACTIVE]", "color: #e0b8ff; font-weight: bold; font-size: 14px; background: #21132e; padding: 4px;");
 })();

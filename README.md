@@ -1,42 +1,69 @@
-# 🐱 KAT-OS // CHEAT ENGINE DEFINITIVO (v4.0)
+# KAT-OS // painel de debug do KAT
 
-> Jogo: [https://coratech-projects.github.io/KAT/](https://coratech-projects.github.io/KAT/)
+Jogo: https://coratech-projects.github.io/KAT/
 
----
+mexendo em um jogo que usa portugol nas interações e sinceramente deu uma dor na alma ter que lidar com aquilo dkskksks misericórdia
 
-## 🎯 Por que o Terminal Final travava em "AGUARDANDO PROGRAMA"?
-
-O terminal final (`final-commit.html`) fica esperando que o código do 10º desafio seja enviado para compilar. Quando usamos o "Save 100%", o jogo entendia que todos os desafios já tinham sido feitos e não abria a janela de execução.
-
-**Como resolver agora:**
-No topo do menu, clique no novo botão:
-👉 **`▶ EXECUTAR TERMINAL FINAL`**
-O terminal vai começar a digitar o código na hora, a barra de progresso vai de 0% a 100%, valida a saída e aciona o final da história!
+no fim acabei fazendo um hack pra modificar alguns atributos do jogo, tipo velocidade de movimento, noclip, tamanho do personagem e outras coisas, que inicialmente eram só alterações pelo console mas acabou virando um painel próprio
 
 ---
 
-## 🕺 O RICKROLL (Never Gonna Give You Up)
-* Clique no botão **`🕺 RICKROLL TROLL`** no menu para abrir a janela do Rick Astley dançando em tela cheia com a música clássica!
-* Derrotar o Chromicos no modo Boss Bar também dispara o Rickroll automaticamente!
+## o que tem de novo
+
+**visual nativo do jogo**
+
+resolvi fazer a interface seguindo a aparência original do KAT, usando as próprias cores do jogo
+
+- paleta original (`--pixel-highlight: #e0b8ff`, `--pixel-panel: #241432` e degradê entre `#322044` e `#170e22`)
+- bordas duplas pixeladas seguindo as caixas de diálogo
+- fonte `Courier New`
+- aparência de um menu secreto de desenvolvedor, como se fosse um terminal de root do próprio jogo
+
+**persistência entre cenários**
+
+uma coisa que incomodava era o script desaparecer quando mudava de cenário ou passava por um portal
+
+agora ele salva as configurações no `localStorage` e tenta restaurar tudo quando o jogo carrega novamente
+
+configurações salvas:
+
+- `Speed`
+- `Noclip`
+- `Godzilla`
+- `Pião`
+- estado minimizado do painel
+
+também adicionei a opção de minimizar, que transforma o painel em um pequeno indicador no canto da tela
+
+`[ KAT-OS // ROOT ]`
+
+assim não fica atrapalhando enquanto joga
 
 ---
 
-## 🎮 Novos Controles de Ação
+## instalação automática
 
-| Comando / Botão | O que faz |
-|---|---|
-| **Tecla `F` ou Botão Laser** | O KAT dispara raios laser verdes da boca com som 8-bit, acertando NPCs e dando dano no Boss! |
-| **Barra de `Espaço`** | O KAT dá um pulo no ar com arco de gravidade. |
-| **Segurar Botão Direito** | Abre um **Buraco Negro / Vórtice Gravitacional** que suga todos os NPCs e caixas em direção ao cursor do mouse! |
-| **👑 Tag VIP** | Adiciona uma coroa dourada e a tag `[👑 ROOT_ADMIN]` flutuando na cabeça do gato. |
-| **⚔️ Boss Bar** | Coloca a barra de vida gigante estilo Dark Souls do **Chromicos** no topo da tela. Atire nele com laser para tirar HP! |
-| **📺 Visual CRT** | Ativa efeito de monitor de tubo retrô dos anos 80 com scanlines. |
-| **Tecla `M`** | Faz o KAT miar com o áudio robótico do jogo. |
+pra não precisar executar o código pelo console toda vez, dá pra usar Tampermonkey ou Violentmonkey
+
+[Tampermonkey](https://www.tampermonkey.net/)
+
+depois de instalar:
+
+- abra o dashboard da extensão
+- crie um novo script
+- apague o conteúdo padrão e cole o conteúdo de `kat-hack.user.js`
+- salve com `Ctrl + S`
+
+depois é só abrir o jogo
+
+https://coratech-projects.github.io/KAT/
+
+o script carrega automaticamente e tenta manter as configurações mesmo quando você troca de cenário ou passa por portais
 
 ---
 
-## 📁 Arquivos Atualizados na Pasta
+## arquivos
 
-* [`kat-hack.user.js`](kat-hack.user.js) — Versão Tampermonkey (Auto-carrega em portais, sem comentários).
-* [`kat-hack.js`](kat-hack.js) — Versão Console F12 (Código limpo, sem comentários).
-* [`bookmarklet.txt`](bookmarklet.txt) — Versão Favoritos de 1 clique.
+- `kat-hack.user.js` — versão para Tampermonkey, com carregamento automático
+- `kat-hack.js` — versão avulsa para executar pelo console do navegador (`F12`)
+- `bookmarklet.txt` — versão compactada para salvar nos favoritos e executar com um clique
